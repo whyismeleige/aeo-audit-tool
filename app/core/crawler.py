@@ -29,7 +29,7 @@ class Crawler:
         self.queue: deque[str] = deque()
         self.results: list[CrawlResult] = []
         
-        self.domain = urlparse(seed_url).netloc
+        self.domain = urlparse(seed_url).hostname
         
         self.robot_parser = RobotFileParser()
         
