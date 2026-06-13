@@ -1,10 +1,14 @@
 import pytest
+
 from app.core.scorer import (
     _score_title,
     _score_meta_description,
     _score_canonical_url,
     _score_meta_robots,
+    _score_metadata,
+    CategoryScore,
 )
+from app.core.parser import ParsedPage
 
 
 @pytest.mark.parametrize(
@@ -176,4 +180,113 @@ def test_score_canonical_url(canonical_url, expected):
 )
 def test_score_meta_robots(meta_robots, expected):
     result = _score_meta_robots(meta_robots)
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "page, expected",
+    [
+        (
+            # Everything missing
+            ParsedPage(
+                url="https://example.com",
+                status_code=200,
+            ),
+            CategoryScore(
+                score=12,
+                max_possible=100,
+                metrics={
+                    "title": 0,
+                    "meta_description": 0,
+                    "canonical_url": 0,
+                    "meta_robots": 12,
+                },
+                findings=[
+                    "Title tag is not present",
+                    "Title is not present in the website",
+                    "Meta Description is not present",
+                    "Meta Description is not present in the website",
+                    "Canonical URL is not present in your website",
+                    "Meta robots not explicitly optimized",
+                ],
+                recommendations=[
+                    "Title is required for your website",
+                    "Title is heavily important for AI Citations",
+                    "Meta Description is required for your website",
+                    "Meta Description is heavily important for your citations",
+                    "Canonical URL is required for proper citation and indexing of your website.",
+                    "Consider setting to index, follow",
+                ],
+            ),
+        ),
+        (
+            # Everything optimized
+            ParsedPage(
+                url="https://example.com",
+                status_code=200,
+                title="This title contains more than five words",
+                meta_description=(
+                    "This meta description contains enough words to satisfy "
+                    "the optimal length requirements easily and is proper."
+                ),
+                canonical_url="https://example.com",
+                meta_robots="index, follow",
+            ),
+            CategoryScore(
+                score=100,
+                max_possible=100,
+                metrics={
+                    "title": 30,
+                    "meta_description": 30,
+                    "canonical_url": 20,
+                    "meta_robots": 20,
+                },
+                findings=[
+                    "Title is properly defined",
+                    "Meta Description is properly defined",
+                    "Canonical URL is present in your website",
+                    "Meta robots fully permits indexing and following",
+                ],
+                recommendations=[],
+            ),
+        ),
+        (
+            # Mixed quality page
+            ParsedPage(
+                url="https://example.com",
+                status_code=200,
+                title="Too short",
+                meta_description="Short description",
+                canonical_url=None,
+                meta_robots="noindex",
+            ),
+            CategoryScore(
+                score=18,  
+                max_possible=100,
+                metrics={
+                    "title": 12,
+                    "meta_description": 4,
+                    "canonical_url": 0,
+                    "meta_robots": 2,
+                },
+                findings=[
+                    "Title is too short",
+                    "Meta Description is too short",
+                    "Canonical URL is not present in your website",
+                    "Meta robots contains restrictive directives",
+                ],
+                recommendations=[
+                    "Lengthen your Title of your website",
+                    "Make your Title descriptive and definitive",
+                    "Lengthen your Meta Description of your website.",
+                    "Make your Meta Description descriptive and definitive.",
+                    "Canonical URL is required for proper citation and indexing of your website.",
+                    "Review and remove unneccessary restrictions",
+                ],
+            ),
+        ),
+    ],
+)
+def test_score_metadata(page, expected):
+    result = _score_metadata(page)
     assert result == expected
