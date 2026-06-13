@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+from app.core.parser import ParsedPage
+
 
 @dataclass
 class CategoryScore:
@@ -122,23 +124,73 @@ def _score_meta_robots(meta_robots: str | None) -> tuple[int, list[str], list[st
         "noarchive": -5,
         "nosnippet": -5,
     }
-    
+
     score = 12
-    
-    directives = [item.strip().lower() for item in meta_robots.split(",")] if meta_robots else []
-    
+
+    directives = (
+        [item.strip().lower() for item in meta_robots.split(",")] if meta_robots else []
+    )
+
     for directive in directives:
         score += POINTS.get(directive, 0)
-    
-    score = max(0, min(score, 20)) 
-    
+
+    score = max(0, min(score, 20))
+
     if score == 0:
-        return (score, ["Meta robots heavily restricts AI/crawler access"], ["Remove restrictive directives like noindex/nofollow"])
+        return (
+            score,
+            ["Meta robots heavily restricts AI/crawler access"],
+            ["Remove restrictive directives like noindex/nofollow"],
+        )
     elif 0 < score < 12:
-        return (score, ["Meta robots contains restrictive directives"], ["Review and remove unneccessary restrictions"])
+        return (
+            score,
+            ["Meta robots contains restrictive directives"],
+            ["Review and remove unneccessary restrictions"],
+        )
     elif score == 12:
-        return (score, ["Meta robots not explicitly optimized"], ["Consider setting to index, follow"])
+        return (
+            score,
+            ["Meta robots not explicitly optimized"],
+            ["Consider setting to index, follow"],
+        )
     elif 12 < score < 20:
         return (score, ["Meta robots is mostly permissive"], [])
     elif score == 20:
         return (score, ["Meta robots fully permits indexing and following"], [])
+
+
+def _score_metadata(page: ParsedPage) -> CategoryScore:
+    title_score, title_findings, title_recs = _score_title(page.title)
+    desc_score, desc_findings, desc_recs = _score_meta_description(
+        page.meta_description
+    )
+    canon_score, canon_findings, canon_recs = _score_canonical_url(page.canonical_url)
+    robots_score, robots_findings, robots_recs = _score_meta_robots(page.meta_robots)
+
+    findings = []
+    findings.extend(title_findings)
+    findings.extend(desc_findings)
+    findings.extend(canon_findings)
+    findings.extend(robots_findings)
+
+    recommendations = []
+    recommendations.extend(title_recs)
+    recommendations.extend(desc_recs)
+    recommendations.extend(canon_recs)
+    recommendations.extend(robots_recs)
+
+    metrics = {
+        "title": title_score,
+        "meta_description": desc_score,
+        "canonical_url": canon_score,
+        "meta_robots": robots_score,
+    }
+
+    return CategoryScore(
+        score=title_score + desc_score + canon_score + robots_score,
+        max_possible=100,
+        metrics=metrics,
+        findings=findings,
+        recommendations=recommendations,
+    )
