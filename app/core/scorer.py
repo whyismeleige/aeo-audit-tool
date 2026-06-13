@@ -37,7 +37,7 @@ def _score_title(title: str | None) -> tuple[int, list[str], list[str]]:
     lower_limit = 5
 
     max_score = 30
-    
+
     if word_count < lower_limit:
         score = round((word_count / lower_limit) * max_score)
         return (
@@ -75,7 +75,7 @@ def _score_meta_description(
 
     upper_limit = 20
     lower_limit = 15
-    
+
     max_score = 30
 
     if word_count < lower_limit:
@@ -97,3 +97,16 @@ def _score_meta_description(
             ["Meta Description is too long"],
             ["Make the description short and consise."],
         )
+
+
+def _score_canonical_url(canonical_url: str | None) -> tuple[int, list[str], list[str]]:
+    if not canonical_url:
+        return (
+            0,
+            ["Canonical URL is not present in your website"],
+            [
+                "Canonical URL is required for proper citation and indexing of your website."
+            ],
+        )
+    else:
+        return (20, ["Canonical URL is present in your website"], [])
