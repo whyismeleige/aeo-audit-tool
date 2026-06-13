@@ -1,5 +1,5 @@
 import pytest
-from app.core.scorer import _score_title, _score_meta_description
+from app.core.scorer import _score_title, _score_meta_description, _score_canonical_url
 
 
 @pytest.mark.parametrize(
@@ -84,3 +84,38 @@ def test_score_title(title, expected):
 def test_score_meta_description(description, expected):
     result = _score_meta_description(description)
     assert result == expected
+
+
+@pytest.mark.parametrize(
+    "canonical_url, expected",
+    [
+        (
+            None,
+            (
+                0,
+                ["Canonical URL is not present in your website"],
+                [
+                    "Canonical URL is required for proper citation and indexing of your website."
+                ],
+            ),
+        ),
+        (
+            "",
+            (
+                0,
+                ["Canonical URL is not present in your website"],
+                [
+                    "Canonical URL is required for proper citation and indexing of your website."
+                ],
+            ),
+        ),
+        (
+            "https://example.com/about",
+            (20, ["Canonical URL is present in your website"], []),
+        ),
+    ],
+)
+def test_score_canonical_url(canonical_url, expected):
+    result = _score_canonical_url(canonical_url)
+    assert result == expected
+
