@@ -110,3 +110,35 @@ def _score_canonical_url(canonical_url: str | None) -> tuple[int, list[str], lis
         )
     else:
         return (20, ["Canonical URL is present in your website"], [])
+
+def _score_meta_robots(meta_robots: str | None) -> tuple[int, list[str], list[str]]:
+    POINTS = {
+        "index": 10,
+        "noindex": -10,
+        "follow": 10,
+        "nofollow": -10,
+        "all": 20,
+        "none": -20,
+        "noarchive": -5,
+        "nosnippet": -5,
+    }
+    
+    score = 12
+    
+    directives = [item.strip().lower() for item in meta_robots.split(",")] if meta_robots else []
+    
+    for directive in directives:
+        score += POINTS.get(directive, 0)
+    
+    score = max(0, min(score, 20)) 
+    
+    if score == 0:
+        return (score, ["Meta robots heavily restricts AI/crawler access"], ["Remove restrictive directives like noindex/nofollow"])
+    elif 0 < score < 12:
+        return (score, ["Meta robots contains restrictive directives"], ["Review and remove unneccessary restrictions"])
+    elif score == 12:
+        return (score, ["Meta robots not explicitly optimized"], ["Consider setting to index, follow"])
+    elif 12 < score < 20:
+        return (score, ["Meta robots is mostly permissive"], [])
+    elif score == 20:
+        return (score, ["Meta robots fully permits indexing and following"], [])
