@@ -464,7 +464,9 @@ def _score_faq_items(faq_items: list[FAQItem]) -> tuple[int, list[str], list[str
 
     if average_answer_word_count < 10:
         findings.extend(["FAQ answers are too brief"])
-        recommendations.extend(["Expand FAQ answers to at least 10 words for AI citability"])
+        recommendations.extend(
+            ["Expand FAQ answers to at least 10 words for AI citability"]
+        )
     elif 10 <= average_answer_word_count <= 50:
         total_score += round((average_answer_word_count / 50) * 20)
         findings.extend(["FAQ answers are well-structured"])
@@ -472,6 +474,37 @@ def _score_faq_items(faq_items: list[FAQItem]) -> tuple[int, list[str], list[str
     else:
         total_score += 10
         findings.extend(["FAQ answers are too long"])
-        recommendations.extend(["Keep FAQ answers concise (10-50 words) for better AI extraction"])
+        recommendations.extend(
+            ["Keep FAQ answers concise (10-50 words) for better AI extraction"]
+        )
 
     return (total_score, findings, recommendations)
+
+def _score_schema_quality(page: ParsedPage) -> CategoryScore:
+    schema_score, schema_findings, schema_recs = _score_has_schema(page.has_schema)
+    types_score, types_findings, types_recs = _score_schema_types(page.schema_types)
+    faq_score, faq_findings, faq_recs = _score_faq_items(page.faq_items)
+
+    findings = []
+    findings.extend(schema_findings)
+    findings.extend(types_findings)
+    findings.extend(faq_findings)
+
+    recommendations = []
+    recommendations.extend(schema_recs)
+    recommendations.extend(types_recs)
+    recommendations.extend(faq_recs)
+
+    metrics = {
+        "has_schema": schema_score,
+        "schema_types": types_score,
+        "faq_items": faq_score,
+    }
+
+    return CategoryScore(
+        score=schema_score + types_score + faq_score,
+        max_possible=100,
+        metrics=metrics,
+        findings=findings,
+        recommendations=recommendations,
+    )
