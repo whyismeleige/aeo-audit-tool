@@ -113,6 +113,7 @@ def _score_canonical_url(canonical_url: str | None) -> tuple[int, list[str], lis
     else:
         return (20, ["Canonical URL is present in your website"], [])
 
+
 def _score_meta_robots(meta_robots: str | None) -> tuple[int, list[str], list[str]]:
     POINTS = {
         "index": 10,
@@ -194,3 +195,32 @@ def _score_metadata(page: ParsedPage) -> CategoryScore:
         findings=findings,
         recommendations=recommendations,
     )
+
+def _score_word_count(word_count: int) -> tuple[int, list[str], list[str]]:
+    upper_limit = 2500
+    lower_limit = 800
+
+    max_score = 20
+
+    if word_count < lower_limit:
+        score = round((word_count / lower_limit) * max_score)
+        return (
+            score,
+            ["Body Content is too short"],
+            [
+                "Lengthen your Content of your website",
+                "Make your Content of your website descriptive and definitive",
+            ],
+        )
+    elif lower_limit <= word_count <= upper_limit:
+        return (max_score, ["Body Content of your website is of correct length"], [])
+    else:
+        score = max(max_score - (word_count - upper_limit) * 2, 7)
+        return (
+            score,
+            ["Body Content of your website is too long."],
+            [
+                "Make your website content specific and properly defined",
+                "Long Content is often classified as spam by AI Retrieval systems",
+            ],
+        )
