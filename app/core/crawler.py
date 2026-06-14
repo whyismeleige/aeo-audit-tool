@@ -110,6 +110,7 @@ class Crawler:
             return self.results
 
         self.queue.append(normalized_url)
+        self.visited.add(normalized_url)
 
         while self.queue and len(self.results) < self.limit:
             batch = []
