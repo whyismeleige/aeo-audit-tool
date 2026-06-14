@@ -6,6 +6,7 @@ from app.core.scorer import (
     _score_canonical_url,
     _score_meta_robots,
     _score_metadata,
+    _score_word_count,
     CategoryScore,
 )
 from app.core.parser import ParsedPage
@@ -261,7 +262,7 @@ def test_score_meta_robots(meta_robots, expected):
                 meta_robots="noindex",
             ),
             CategoryScore(
-                score=18,  
+                score=18,
                 max_possible=100,
                 metrics={
                     "title": 12,
@@ -289,4 +290,51 @@ def test_score_meta_robots(meta_robots, expected):
 )
 def test_score_metadata(page, expected):
     result = _score_metadata(page)
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "word_count, expected",
+    [
+        (  # No Word Content in Website
+            0,
+            (
+                0,
+                ["Body Content is too short"],
+                [
+                    "Lengthen your Content of your website",
+                    "Make your Content of your website descriptive and definitive",
+                ],
+            ),
+        ),
+        (  # Very Short Word Content in Website
+            200,
+            (
+                5,
+                ["Body Content is too short"],
+                [
+                    "Lengthen your Content of your website",
+                    "Make your Content of your website descriptive and definitive",
+                ],
+            ),
+        ),
+        (  # Proper Word Content in Website
+            850,
+            (20, ["Body Content of your website is of correct length"], []),
+        ),
+        (  # Long Word Content in Website
+            3000,
+            (
+                7,
+                ["Body Content of your website is too long."],
+                [
+                    "Make your website content specific and properly defined",
+                    "Long Content is often classified as spam by AI Retrieval systems",
+                ],
+            ),
+        ),
+    ],
+)
+def test_score_word_count(word_count, expected):
+    result = _score_word_count(word_count)
     assert result == expected
