@@ -13,6 +13,7 @@ from app.core.scorer import (
     _score_faq_items,
     _score_has_schema,
     _score_schema_types,
+    _score_schema_quality,
     CategoryScore,
 )
 from app.core.parser import ParsedPage, FAQItem
@@ -554,7 +555,7 @@ def test_score_body_content(body_text, expected):
                 body_text_content="seo content optimization ranking visibility retrieval ai content ranking and ranking in ai",
             ),
             CategoryScore(
-                score=53,  
+                score=53,
                 max_possible=100,
                 metrics={
                     "word_count": 5,
@@ -586,6 +587,7 @@ def test_score_content_quality(page, expected):
     result = _score_content_quality(page)
     assert result == expected
 
+
 @pytest.mark.parametrize(
     "has_schema, expected",
     [
@@ -610,7 +612,8 @@ def test_score_content_quality(page, expected):
 def test_score_has_schema(has_schema, expected):
     result = _score_has_schema(has_schema)
     assert result == expected
-    
+
+
 @pytest.mark.parametrize(
     "schema_types, expected",
     [
@@ -620,9 +623,7 @@ def test_score_has_schema(has_schema, expected):
             (
                 0,
                 ["No recognized schema types found"],
-                [
-                    "Add high-value schema types like Article, Organization, or Product"
-                ],
+                ["Add high-value schema types like Article, Organization, or Product"],
             ),
         ),
         (
@@ -653,7 +654,7 @@ def test_score_has_schema(has_schema, expected):
                 "LocalBusiness",
                 "Person",
                 "WebPage",
-                "Event"
+                "Event",
             ],
             (
                 30,
@@ -666,7 +667,8 @@ def test_score_has_schema(has_schema, expected):
 def test_score_schema_types(schema_types, expected):
     result = _score_schema_types(schema_types)
     assert result == expected
-    
+
+
 @pytest.mark.parametrize(
     "faq_items, expected",
     [
@@ -692,7 +694,7 @@ def test_score_schema_types(schema_types, expected):
                 ),
             ],
             (
-                18, 
+                18,
                 [
                     "Limited FAQ coverage",
                     "FAQ answers are too brief",
@@ -713,7 +715,7 @@ def test_score_schema_types(schema_types, expected):
                 for i in range(6)
             ],
             (
-                34,  
+                34,
                 [
                     "Good FAQ Coverage",
                     "FAQ answers are well-structured",
@@ -746,4 +748,122 @@ def test_score_schema_types(schema_types, expected):
 )
 def test_score_faq_items(faq_items, expected):
     result = _score_faq_items(faq_items)
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "page, expected",
+    [
+        (
+            # Everything missing
+            ParsedPage(
+                url="https://example.com",
+                status_code=200,
+                has_schema=False,
+                schema_types=[],
+                faq_items=[],
+            ),
+            CategoryScore(
+                score=0,
+                max_possible=100,
+                metrics={
+                    "has_schema": 0,
+                    "schema_types": 0,
+                    "faq_items": 0,
+                },
+                findings=[
+                    "No structured schema markup found",
+                    "No recognized schema types found",
+                    "No FAQ schema found",
+                ],
+                recommendations=[
+                    "Add JSON-LD schema markup to your pages",
+                    "Add high-value schema types like Article, Organization, or Product",
+                    "Add FAQPage schema to answer common questions directly",
+                ],
+            ),
+        ),
+        (
+            # Everything optimized
+            ParsedPage(
+                url="https://example.com",
+                status_code=200,
+                has_schema=True,
+                schema_types=[
+                    "Product",
+                    "Organization",
+                    "Article",
+                    "BreadcrumbList",
+                    "LocalBusiness",
+                    "Person",
+                    "WebPage",
+                ],
+                faq_items=[
+                    FAQItem(
+                        question=f"Question {i}",
+                        answer="This answer contains exactly ten meaningful words for testing purposes.",
+                    )
+                    for i in range(6)
+                ],
+            ),
+            CategoryScore(
+                score=83, 
+                max_possible=100,
+                metrics={
+                    "has_schema": 20,
+                    "schema_types": 29,
+                    "faq_items": 34,
+                },
+                findings=[
+                    "Page has structured schema markup",
+                    "Excellent schema type coverage",
+                    "Good FAQ Coverage",
+                    "FAQ answers are well-structured",
+                ],
+                recommendations=[],
+            ),
+        ),
+        (
+            # Mixed quality page
+            ParsedPage(
+                url="https://example.com",
+                status_code=200,
+                has_schema=True,
+                schema_types=["WebPage", "Event"],
+                faq_items=[
+                    FAQItem(
+                        question="What is SEO?",
+                        answer="Improves rankings",
+                    ),
+                    FAQItem(
+                        question="Why use schema?",
+                        answer="Better visibility",
+                    ),
+                ],
+            ),
+            CategoryScore(
+                score=44, 
+                max_possible=100,
+                metrics={
+                    "has_schema": 20,
+                    "schema_types": 6,
+                    "faq_items": 18,
+                },
+                findings=[
+                    "Page has structured schema markup",
+                    "Basic schema types present",
+                    "Limited FAQ coverage",
+                    "FAQ answers are too brief",
+                ],
+                recommendations=[
+                    "Add more specific schema types to improve AI visibility",
+                    "Add more FAQ items to improve answer coverage",
+                    "Expand FAQ answers to at least 10 words for AI citability",
+                ],
+            ),
+        ),
+    ],
+)
+def test_score_schema_quality(page, expected):
+    result = _score_schema_quality(page)
     assert result == expected
