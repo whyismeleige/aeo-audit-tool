@@ -81,6 +81,7 @@ class CategoryScore:
 
 @dataclass
 class ScoreResult:
+    url: str
     overall_score: int
     metadata: CategoryScore
     content_quality: CategoryScore
@@ -690,6 +691,7 @@ def score_page(page: ParsedPage) -> ScoreResult | UnreachablePage:
     )
 
     return ScoreResult(
+        url=page.url,
         overall_score=overall_score,
         structured_data=structured_data,
         metadata=metadata,
