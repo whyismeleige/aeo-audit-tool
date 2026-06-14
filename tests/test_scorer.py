@@ -14,6 +14,8 @@ from app.core.scorer import (
     _score_has_schema,
     _score_schema_types,
     _score_schema_quality,
+    _score_internal_links,
+    _score_connectivity,
     CategoryScore,
 )
 from app.core.parser import ParsedPage, FAQItem
@@ -866,4 +868,125 @@ def test_score_faq_items(faq_items, expected):
 )
 def test_score_schema_quality(page, expected):
     result = _score_schema_quality(page)
+    assert result == expected
+
+@pytest.mark.parametrize(
+    "internal_links, expected",
+    [
+        (
+            # No internal links
+            [],
+            (
+                0,
+                ["Page has no internal links"],
+                [
+                    "Add internal links to connect your content and improve crawlability"
+                ],
+            ),
+        ),
+        (
+            # Minimal internal linking
+            [
+                "/about",
+                "/contact",
+                "/services",
+            ],
+            (
+                30,
+                ["Page has minimal internal linking"],
+                ["Add more internal links to improve site connectivity"],
+            ),
+        ),
+        (
+            # Good internal link coverage
+            [f"/page-{i}" for i in range(10)],
+            (
+                50,  # round((10 / 20) * 100)
+                ["Page has good internal link coverage"],
+                [],
+            ),
+        ),
+        (
+            # Excessive internal links
+            [f"/page-{i}" for i in range(25)],
+            (
+                90,  # round(100 - (25 - 20) * 2)
+                ["Page has excessive internal links"],
+                ["Keep internal links focused and relevant"],
+            ),
+        ),
+    ],
+)
+def test_score_internal_links(internal_links, expected):
+    result = _score_internal_links(internal_links)
+    assert result == expected
+    
+@pytest.mark.parametrize(
+    "page, expected",
+    [
+        (
+            # No internal links
+            ParsedPage(
+                url="https://example.com",
+                status_code=200,
+                internal_links=[],
+            ),
+            CategoryScore(
+                score=0,
+                max_possible=100,
+                metrics={
+                    "internal_links": 0,
+                },
+                findings=[
+                    "Page has no internal links",
+                ],
+                recommendations=[
+                    "Add internal links to connect your content and improve crawlability",
+                ],
+            ),
+        ),
+        (
+            # Healthy internal linking
+            ParsedPage(
+                url="https://example.com",
+                status_code=200,
+                internal_links=[f"/page-{i}" for i in range(10)],
+            ),
+            CategoryScore(
+                score=50,
+                max_possible=100,
+                metrics={
+                    "internal_links": 50,
+                },
+                findings=[
+                    "Page has good internal link coverage",
+                ],
+                recommendations=[],
+            ),
+        ),
+        (
+            # Excessive internal linking
+            ParsedPage(
+                url="https://example.com",
+                status_code=200,
+                internal_links=[f"/page-{i}" for i in range(25)],
+            ),
+            CategoryScore(
+                score=90,
+                max_possible=100,
+                metrics={
+                    "internal_links": 90,
+                },
+                findings=[
+                    "Page has excessive internal links",
+                ],
+                recommendations=[
+                    "Keep internal links focused and relevant",
+                ],
+            ),
+        ),
+    ],
+)
+def test_score_connectivity(page, expected):
+    result = _score_connectivity(page)
     assert result == expected
