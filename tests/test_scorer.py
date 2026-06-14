@@ -9,6 +9,7 @@ from app.core.scorer import (
     _score_word_count,
     _score_headings,
     _score_body_content,
+    _score_content_quality,
     CategoryScore,
 )
 from app.core.parser import ParsedPage
@@ -341,6 +342,7 @@ def test_score_word_count(word_count, expected):
     result = _score_word_count(word_count)
     assert result == expected
 
+
 @pytest.mark.parametrize(
     "headings, expected",
     [
@@ -409,7 +411,8 @@ def test_score_word_count(word_count, expected):
 def test_score_headings(headings, expected):
     result = _score_headings(headings)
     assert result == expected
-    
+
+
 @pytest.mark.parametrize(
     "body_text, expected",
     [
@@ -441,7 +444,7 @@ def test_score_headings(headings, expected):
             # Moderate vocabulary diversity (0.4 <= ratio <= 0.7)
             "seo content optimization ranking visibility retrieval ai content ranking and ranking in ai",
             (
-                28, 
+                28,
                 ["Content has moderate vocabulary diversity"],
                 ["Enrich your content with more varied vocabulary and topics"],
             ),
@@ -459,4 +462,123 @@ def test_score_headings(headings, expected):
 )
 def test_score_body_content(body_text, expected):
     result = _score_body_content(body_text)
+    assert result == expected
+
+
+@pytest.mark.parametrize(
+    "page, expected",
+    [
+        (
+            # Everything missing
+            ParsedPage(
+                url="https://example.com",
+                status_code=200,
+                word_count=0,
+                headings=[],
+                body_text_content=None,
+            ),
+            CategoryScore(
+                score=0,
+                max_possible=100,
+                metrics={
+                    "word_count": 0,
+                    "headings": 0,
+                    "body_text_content": 0,
+                },
+                findings=[
+                    "Body Content is too short",
+                    "Page has no H1 heading",
+                    "Page has no headings",
+                    "Page has no heading hierarchy",
+                    "Headings are too long or empty",
+                    "There is no content available on your website",
+                ],
+                recommendations=[
+                    "Lengthen your Content of your website",
+                    "Make your Content of your website descriptive and definitive",
+                    "Add a single descriptive H1 heading to define the page topic",
+                    "Add headings (H1-H3) to structure your content for AI retrieval",
+                    "Add H1 and H2 headings to establish content structure",
+                    "Keep headings concise and focused (5-10 words)",
+                    "You need to write content on your website",
+                    "Without meaningful content you won't be placed in AI visibility",
+                ],
+            ),
+        ),
+        (
+            # Everything optimized
+            ParsedPage(
+                url="https://example.com",
+                status_code=200,
+                word_count=850,
+                headings=[
+                    {"h1": "Complete Guide to Technical SEO Audits"},
+                    {"h2": "How to Analyze Website Structure"},
+                    {"h2": "Best Practices for Content Optimization"},
+                    {"h3": "Common Technical SEO Mistakes"},
+                ],
+                body_text_content="seo content optimization ranking visibility retrieval",
+            ),
+            CategoryScore(
+                score=100,
+                max_possible=100,
+                metrics={
+                    "word_count": 20,
+                    "headings": 40,
+                    "body_text_content": 40,
+                },
+                findings=[
+                    "Body Content of your website is of correct length",
+                    "Page has a single well-defined H1 heading",
+                    "Page has sufficient heading structure",
+                    "Page has adequate heading hierarchy",
+                    "Headings are well-defined and descriptive",
+                    "Content is rich and diverse, ideal for AI retrieval",
+                ],
+                recommendations=[],
+            ),
+        ),
+        (
+            # Mixed quality page
+            ParsedPage(
+                url="https://example.com",
+                status_code=200,
+                word_count=200,
+                headings=[
+                    {"h1": "Home"},
+                    {"h1": "About"},
+                ],
+                body_text_content="seo content optimization ranking visibility retrieval ai content ranking and ranking in ai",
+            ),
+            CategoryScore(
+                score=53,  
+                max_possible=100,
+                metrics={
+                    "word_count": 5,
+                    "headings": 20,
+                    "body_text_content": 28,
+                },
+                findings=[
+                    "Body Content is too short",
+                    "Page has multiple H1 headings",
+                    "Page has minimal heading structure",
+                    "Page lacks H2 hierarchy",
+                    "Headings are too brief",
+                    "Content has moderate vocabulary diversity",
+                ],
+                recommendations=[
+                    "Lengthen your Content of your website",
+                    "Make your Content of your website descriptive and definitive",
+                    "Use only one H1 heading per page for clear topic signaling",
+                    "Add more headings to break content into scannable sections",
+                    "Add H2 headings to create content sections for better chunking",
+                    "Make headings more descriptive (aim for 5-10 words)",
+                    "Enrich your content with more varied vocabulary and topics",
+                ],
+            ),
+        ),
+    ],
+)
+def test_score_content_quality(page, expected):
+    result = _score_content_quality(page)
     assert result == expected
