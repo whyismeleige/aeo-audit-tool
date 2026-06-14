@@ -16,6 +16,8 @@ from app.core.scorer import (
     _score_schema_quality,
     _score_internal_links,
     _score_connectivity,
+    _score_images_without_alt,
+    _score_technical_compliance,
     CategoryScore,
 )
 from app.core.parser import ParsedPage, FAQItem
@@ -989,4 +991,129 @@ def test_score_internal_links(internal_links, expected):
 )
 def test_score_connectivity(page, expected):
     result = _score_connectivity(page)
+    assert result == expected
+    
+@pytest.mark.parametrize(
+    "images_without_alt, expected",
+    [
+        (
+            # All images have alt text
+            0,
+            (
+                100,
+                ["All images have alt text"],
+                [],
+            ),
+        ),
+        (
+            # Small number missing alt text (<= 10)
+            5,
+            (
+                75,  # round(100 - (5 / 10) * 50)
+                ["5 images are missing alt text"],
+                [
+                    "Add descriptive alt text to all images for accessibility and AI understanding"
+                ],
+            ),
+        ),
+        (
+            # Significant number missing alt text (11-20)
+            15,
+            (
+                25,  # round(50 - ((15 - 10) / 10) * 50)
+                ["15 images are missing alt text"],
+                [
+                    "Urgently add alt text — missing alt text severely impacts AI image understanding"
+                ],
+            ),
+        ),
+        (
+            # Critical level (>20)
+            25,
+            (
+                0,
+                [
+                    "Critical: majority of images missing alt text",
+                    "25 images are missing alt text",
+                ],
+                [
+                    "Audit all images and add descriptive alt text immediately"
+                ],
+            ),
+        ),
+    ],
+)
+def test_score_images_without_alt(images_without_alt, expected):
+    result = _score_images_without_alt(images_without_alt)
+    assert result == expected
+    
+@pytest.mark.parametrize(
+    "page, expected",
+    [
+        (
+            # Fully compliant
+            ParsedPage(
+                url="https://example.com",
+                status_code=200,
+                images_without_alt=0,
+            ),
+            CategoryScore(
+                score=100,
+                max_possible=100,
+                metrics={
+                    "images_without_alt": 100,
+                },
+                findings=[
+                    "All images have alt text",
+                ],
+                recommendations=[],
+            ),
+        ),
+        (
+            # Moderate issues
+            ParsedPage(
+                url="https://example.com",
+                status_code=200,
+                images_without_alt=5,
+            ),
+            CategoryScore(
+                score=75,
+                max_possible=100,
+                metrics={
+                    "images_without_alt": 75,
+                },
+                findings=[
+                    "5 images are missing alt text",
+                ],
+                recommendations=[
+                    "Add descriptive alt text to all images for accessibility and AI understanding",
+                ],
+            ),
+        ),
+        (
+            # Critical issues
+            ParsedPage(
+                url="https://example.com",
+                status_code=200,
+                images_without_alt=25,
+            ),
+            CategoryScore(
+                score=0,
+                max_possible=100,
+                metrics={
+                    "images_without_alt": 0,
+                },
+                findings=[
+                    "Critical: majority of images missing alt text",
+                    "25 images are missing alt text",
+                ],
+                recommendations=[
+                    "Audit all images and add descriptive alt text immediately",
+                ],
+            ),
+        ),
+    ],
+)
+def test_score_technical_compliance(page, expected):
+    result = _score_technical_compliance(page)
     assert result == expected
