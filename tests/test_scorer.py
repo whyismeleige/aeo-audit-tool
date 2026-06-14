@@ -7,6 +7,7 @@ from app.core.scorer import (
     _score_meta_robots,
     _score_metadata,
     _score_word_count,
+    _score_headings,
     CategoryScore,
 )
 from app.core.parser import ParsedPage
@@ -337,4 +338,73 @@ def test_score_metadata(page, expected):
 )
 def test_score_word_count(word_count, expected):
     result = _score_word_count(word_count)
+    assert result == expected
+
+@pytest.mark.parametrize(
+    "headings, expected",
+    [
+        (
+            # Empty headings — all sub-checks fail
+            [],
+            (
+                0,
+                [
+                    "Page has no H1 heading",
+                    "Page has no headings",
+                    "Page has no heading hierarchy",
+                    "Headings are too long or empty",
+                ],
+                [
+                    "Add a single descriptive H1 heading to define the page topic",
+                    "Add headings (H1-H3) to structure your content for AI retrieval",
+                    "Add H1 and H2 headings to establish content structure",
+                    "Keep headings concise and focused (5-10 words)",
+                ],
+            ),
+        ),
+        (
+            # Well-structured page
+            [
+                {"h1": "Complete Guide to Technical SEO Audits"},
+                {"h2": "How to Analyze Website Structure"},
+                {"h2": "Best Practices for Content Optimization"},
+                {"h3": "Common Technical SEO Mistakes"},
+            ],
+            (
+                40,
+                [
+                    "Page has a single well-defined H1 heading",
+                    "Page has sufficient heading structure",
+                    "Page has adequate heading hierarchy",
+                    "Headings are well-defined and descriptive",
+                ],
+                [],
+            ),
+        ),
+        (
+            # Poorly structured page
+            [
+                {"h1": "Home"},
+                {"h1": "About"},
+            ],
+            (
+                20,
+                [
+                    "Page has multiple H1 headings",
+                    "Page has minimal heading structure",
+                    "Page lacks H2 hierarchy",
+                    "Headings are too brief",
+                ],
+                [
+                    "Use only one H1 heading per page for clear topic signaling",
+                    "Add more headings to break content into scannable sections",
+                    "Add H2 headings to create content sections for better chunking",
+                    "Make headings more descriptive (aim for 5-10 words)",
+                ],
+            ),
+        ),
+    ],
+)
+def test_score_headings(headings, expected):
+    result = _score_headings(headings)
     assert result == expected
