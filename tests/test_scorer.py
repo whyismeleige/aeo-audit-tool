@@ -10,9 +10,12 @@ from app.core.scorer import (
     _score_headings,
     _score_body_content,
     _score_content_quality,
+    _score_faq_items,
+    _score_has_schema,
+    _score_schema_types,
     CategoryScore,
 )
-from app.core.parser import ParsedPage
+from app.core.parser import ParsedPage, FAQItem
 
 
 @pytest.mark.parametrize(
@@ -581,4 +584,166 @@ def test_score_body_content(body_text, expected):
 )
 def test_score_content_quality(page, expected):
     result = _score_content_quality(page)
+    assert result == expected
+
+@pytest.mark.parametrize(
+    "has_schema, expected",
+    [
+        (
+            False,
+            (
+                0,
+                ["No structured schema markup found"],
+                ["Add JSON-LD schema markup to your pages"],
+            ),
+        ),
+        (
+            True,
+            (
+                20,
+                ["Page has structured schema markup"],
+                [],
+            ),
+        ),
+    ],
+)
+def test_score_has_schema(has_schema, expected):
+    result = _score_has_schema(has_schema)
+    assert result == expected
+    
+@pytest.mark.parametrize(
+    "schema_types, expected",
+    [
+        (
+            # No schema types
+            [],
+            (
+                0,
+                ["No recognized schema types found"],
+                [
+                    "Add high-value schema types like Article, Organization, or Product"
+                ],
+            ),
+        ),
+        (
+            # Basic coverage (score <= 10)
+            ["WebPage", "Event"],
+            (
+                6,
+                ["Basic schema types present"],
+                ["Add more specific schema types to improve AI visibility"],
+            ),
+        ),
+        (
+            # Good coverage (10 < score <= 25)
+            ["Organization", "Article", "BreadcrumbList", "WebPage"],
+            (
+                16,
+                ["Good schema type coverage"],
+                [],
+            ),
+        ),
+        (
+            # Excellent coverage (> 25)
+            [
+                "Product",
+                "Organization",
+                "Article",
+                "BreadcrumbList",
+                "LocalBusiness",
+                "Person",
+                "WebPage",
+                "Event"
+            ],
+            (
+                30,
+                ["Excellent schema type coverage"],
+                [],
+            ),
+        ),
+    ],
+)
+def test_score_schema_types(schema_types, expected):
+    result = _score_schema_types(schema_types)
+    assert result == expected
+    
+@pytest.mark.parametrize(
+    "faq_items, expected",
+    [
+        (
+            # No FAQs
+            [],
+            (
+                0,
+                ["No FAQ schema found"],
+                ["Add FAQPage schema to answer common questions directly"],
+            ),
+        ),
+        (
+            # Limited FAQs + short answers
+            [
+                FAQItem(
+                    question="What is SEO?",
+                    answer="Improves rankings",
+                ),
+                FAQItem(
+                    question="Why use schema?",
+                    answer="Better visibility",
+                ),
+            ],
+            (
+                18, 
+                [
+                    "Limited FAQ coverage",
+                    "FAQ answers are too brief",
+                ],
+                [
+                    "Add more FAQ items to improve answer coverage",
+                    "Expand FAQ answers to at least 10 words for AI citability",
+                ],
+            ),
+        ),
+        (
+            # Good FAQ coverage + well-structured answers
+            [
+                FAQItem(
+                    question=f"Question {i}",
+                    answer="This answer contains exactly ten meaningful words for testing purposes.",
+                )
+                for i in range(6)
+            ],
+            (
+                34,  
+                [
+                    "Good FAQ Coverage",
+                    "FAQ answers are well-structured",
+                ],
+                [],
+            ),
+        ),
+        (
+            # Excessive FAQ count + overly long answers
+            [
+                FAQItem(
+                    question=f"Question {i}",
+                    answer=" ".join(["word"] * 60),
+                )
+                for i in range(12)
+            ],
+            (
+                36,
+                [
+                    "Excessive FAQ items",
+                    "FAQ answers are too long",
+                ],
+                [
+                    "Keep FAQ items focused and under 10 for best results",
+                    "Keep FAQ answers concise (10-50 words) for better AI extraction",
+                ],
+            ),
+        ),
+    ],
+)
+def test_score_faq_items(faq_items, expected):
+    result = _score_faq_items(faq_items)
     assert result == expected
