@@ -8,6 +8,7 @@ from app.core.scorer import (
     _score_metadata,
     _score_word_count,
     _score_headings,
+    _score_body_content,
     CategoryScore,
 )
 from app.core.parser import ParsedPage
@@ -407,4 +408,55 @@ def test_score_word_count(word_count, expected):
 )
 def test_score_headings(headings, expected):
     result = _score_headings(headings)
+    assert result == expected
+    
+@pytest.mark.parametrize(
+    "body_text, expected",
+    [
+        (
+            # No content
+            None,
+            (
+                0,
+                ["There is no content available on your website"],
+                [
+                    "You need to write content on your website",
+                    "Without meaningful content you won't be placed in AI visibility",
+                ],
+            ),
+        ),
+        (
+            # Low vocabulary diversity (ratio < 0.4)
+            "seo seo seo seo seo seo content content content content",
+            (
+                8,
+                ["Content is thin or repetitive"],
+                [
+                    "Rewrite content to be more substantive",
+                    "Avoid keyword stuffing and repetitive phrases",
+                ],
+            ),
+        ),
+        (
+            # Moderate vocabulary diversity (0.4 <= ratio <= 0.7)
+            "seo content optimization ranking visibility retrieval ai content ranking and ranking in ai",
+            (
+                28, 
+                ["Content has moderate vocabulary diversity"],
+                ["Enrich your content with more varied vocabulary and topics"],
+            ),
+        ),
+        (
+            # High vocabulary diversity (ratio > 0.7)
+            "seo content optimization ranking visibility retrieval artificial intelligence systems",
+            (
+                40,
+                ["Content is rich and diverse, ideal for AI retrieval"],
+                [],
+            ),
+        ),
+    ],
+)
+def test_score_body_content(body_text, expected):
+    result = _score_body_content(body_text)
     assert result == expected
