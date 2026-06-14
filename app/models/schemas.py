@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel, HttpUrl, Field
 
 class AuditRequest(BaseModel):
@@ -34,5 +34,5 @@ class AuditResponse(BaseModel):
     pages: list[PageResponse]
     unreachable_pages: list[UnreachablePageResponse]
     crawl_duration_seconds: float
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
