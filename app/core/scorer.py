@@ -2,6 +2,73 @@ from dataclasses import dataclass
 
 from app.core.parser import ParsedPage, FAQItem
 
+SCHEMA_TYPES_POINTS = {
+    "Product": 5,
+    "Organization": 5,
+    "Article": 4,
+    "BreadcrumbList": 4,
+    "LocalBusiness": 4,
+    "Person": 4,
+    "WebPage": 3,
+    "Event": 3,
+    "Review": 3,
+}
+
+META_ROBOTS_POINTS = {
+    "index": 10,
+    "noindex": -10,
+    "follow": 10,
+    "nofollow": -10,
+    "all": 20,
+    "none": -20,
+    "noarchive": -5,
+    "nosnippet": -5,
+}
+
+HTTP_ERROR_MESSAGES = {
+    # 400-series: User can usually take action
+    400: "The request couldn't be processed because some information was missing or invalid.",
+    401: "Your session has expired or you are not signed in.",
+    403: "You don't have permission to perform this action.",
+    404: "The requested resource could not be found.",
+    405: "This action is not supported.",
+    406: "The requested format is not available.",
+    407: "Authentication with the network proxy is required.",
+    408: "The request took too long to complete. Please try again.",
+    409: "This operation conflicts with the current state of the resource.",
+    410: "The requested resource is no longer available.",
+    411: "Required request information is missing.",
+    412: "One or more conditions required for this operation were not met.",
+    413: "The submitted data is too large.",
+    414: "The request URL is too long.",
+    415: "The uploaded content type is not supported.",
+    416: "The requested data range is invalid.",
+    417: "The server could not satisfy the request expectations.",
+    418: "The server refused the request.",
+    421: "The request was sent to the wrong server.",
+    422: "Some submitted data is invalid or could not be processed.",
+    423: "The requested resource is currently locked.",
+    424: "The operation could not be completed because another required operation failed.",
+    425: "Please try again shortly.",
+    426: "A newer protocol version is required.",
+    428: "Additional verification is required before proceeding.",
+    429: "Too many requests were made. Please wait and try again.",
+    431: "Request headers are too large.",
+    451: "This resource is unavailable due to legal restrictions.",
+    # 500-series: Usually server problems
+    500: "Something went wrong on our side. Please try again later.",
+    501: "This feature is not currently supported.",
+    502: "A required service is temporarily unavailable.",
+    503: "The service is temporarily unavailable. Please try again later.",
+    504: "The operation timed out while waiting for another service.",
+    505: "The server does not support the required HTTP version.",
+    506: "A server configuration issue prevented the request from completing.",
+    507: "The server does not have enough storage to complete the request.",
+    508: "The server detected a processing loop and stopped the request.",
+    510: "Additional server capabilities are required to complete this request.",
+    511: "Network authentication is required before accessing this service.",
+}
+
 
 @dataclass
 class CategoryScore:
@@ -20,6 +87,13 @@ class ScoreResult:
     structured_data: CategoryScore
     connectivity: CategoryScore
     technical_compliance: CategoryScore
+
+
+@dataclass
+class UnreachablePage:
+    url: str
+    status_code: int
+    reason: str
 
 
 def _score_title(title: str | None) -> tuple[int, list[str], list[str]]:
@@ -115,17 +189,6 @@ def _score_canonical_url(canonical_url: str | None) -> tuple[int, list[str], lis
 
 
 def _score_meta_robots(meta_robots: str | None) -> tuple[int, list[str], list[str]]:
-    POINTS = {
-        "index": 10,
-        "noindex": -10,
-        "follow": 10,
-        "nofollow": -10,
-        "all": 20,
-        "none": -20,
-        "noarchive": -5,
-        "nosnippet": -5,
-    }
-
     score = 12
 
     directives = (
@@ -133,7 +196,7 @@ def _score_meta_robots(meta_robots: str | None) -> tuple[int, list[str], list[st
     )
 
     for directive in directives:
-        score += POINTS.get(directive, 0)
+        score += META_ROBOTS_POINTS.get(directive, 0)
 
     score = max(0, min(score, 20))
 
@@ -390,22 +453,10 @@ def _score_has_schema(has_schema: bool) -> tuple[int, list[str], list[str]]:
 
 
 def _score_schema_types(schema_types: list[str]) -> tuple[int, list[str], list[str]]:
-    POINTS = {
-        "Product": 5,
-        "Organization": 5,
-        "Article": 4,
-        "BreadcrumbList": 4,
-        "LocalBusiness": 4,
-        "Person": 4,
-        "WebPage": 3,
-        "Event": 3,
-        "Review": 3,
-    }
-
     total_score = 0
 
     for schema_type in schema_types:
-        total_score += POINTS.get(schema_type, 0)
+        total_score += SCHEMA_TYPES_POINTS.get(schema_type, 0)
 
     total_score = min(total_score, 30)
 
@@ -593,8 +644,11 @@ def _score_images_without_alt(
             ["Audit all images and add descriptive alt text immediately"],
         )
 
+
 def _score_technical_compliance(page: ParsedPage) -> CategoryScore:
-    imgs_score, imgs_findings, imgs_recs = _score_images_without_alt(page.images_without_alt)
+    imgs_score, imgs_findings, imgs_recs = _score_images_without_alt(
+        page.images_without_alt
+    )
 
     findings = []
     findings.extend(imgs_findings)
@@ -611,3 +665,36 @@ def _score_technical_compliance(page: ParsedPage) -> CategoryScore:
         findings=findings,
         recommendations=recommendations,
     )
+
+
+def score_page(page: ParsedPage) -> ScoreResult | UnreachablePage:
+    unreachable_reason = HTTP_ERROR_MESSAGES.get(page.status_code)
+
+    if unreachable_reason:
+        return UnreachablePage(
+            url=page.url, status_code=page.status_code, reason=unreachable_reason
+        )
+
+    metadata = _score_metadata(page)
+    content_quality = _score_content_quality(page)
+    structured_data = _score_schema_quality(page)
+    connectivity = _score_connectivity(page)
+    technical_compliance = _score_technical_compliance(page)
+
+    overall_score = round(
+        structured_data.score * 0.40
+        + metadata.score * 0.25
+        + content_quality.score * 0.20
+        + connectivity.score * 0.10
+        + technical_compliance.score * 0.05
+    )
+
+    return ScoreResult(
+        overall_score=overall_score,
+        structured_data=structured_data,
+        metadata=metadata,
+        connectivity=connectivity,
+        content_quality=content_quality,
+        technical_compliance=technical_compliance,
+    )
+
