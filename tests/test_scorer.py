@@ -18,7 +18,10 @@ from app.core.scorer import (
     _score_connectivity,
     _score_images_without_alt,
     _score_technical_compliance,
+    score_page,
     CategoryScore,
+    ScoreResult,
+    UnreachablePage
 )
 from app.core.parser import ParsedPage, FAQItem
 
@@ -1117,3 +1120,28 @@ def test_score_images_without_alt(images_without_alt, expected):
 def test_score_technical_compliance(page, expected):
     result = _score_technical_compliance(page)
     assert result == expected
+    
+@pytest.mark.parametrize(
+    "page, expected_type, expected_overall", [
+        (
+            ParsedPage(url="https://example.com", status_code=404),
+            UnreachablePage,
+            None
+        ),
+        (
+            ParsedPage(url="https://example.com", status_code=200),
+            ScoreResult,
+            8,
+        ),
+        (
+            ParsedPage(url="https://example.com", status_code=201, has_schema=True),
+            ScoreResult,
+            16           
+        )
+    ]
+)
+def test_score_page(page, expected_type, expected_overall):
+    result = score_page(page)
+    assert isinstance(result, expected_type)
+    if expected_overall is not None:
+        assert result.overall_score == expected_overall
