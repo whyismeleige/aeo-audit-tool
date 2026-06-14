@@ -480,6 +480,7 @@ def _score_faq_items(faq_items: list[FAQItem]) -> tuple[int, list[str], list[str
 
     return (total_score, findings, recommendations)
 
+
 def _score_schema_quality(page: ParsedPage) -> CategoryScore:
     schema_score, schema_findings, schema_recs = _score_has_schema(page.has_schema)
     types_score, types_findings, types_recs = _score_schema_types(page.schema_types)
@@ -503,6 +504,43 @@ def _score_schema_quality(page: ParsedPage) -> CategoryScore:
 
     return CategoryScore(
         score=schema_score + types_score + faq_score,
+        max_possible=100,
+        metrics=metrics,
+        findings=findings,
+        recommendations=recommendations,
+    )
+
+
+def _score_internal_links(
+    internal_links: list[str],
+) -> tuple[int, list[str], list[str]]:
+    count = len(internal_links)
+
+    if count == 0:
+        return (0, ["Page has no internal links"], ["Add internal links to connect your content and improve crawlability"])
+    elif 0 < count <= 5:
+        return (30, ["Page has minimal internal linking"], ["Add more internal links to improve site connectivity"])
+    elif 5 < count <= 20:
+        score = round((count / 20) * 100)
+        return (score, ["Page has good internal link coverage"], [])
+    else:
+        score = round(100 - (count - 20) * 2, 50)
+        return (score, ["Page has excessive internal links"], ["Keep internal links focused and relevant"])
+
+
+def _score_connectivity(page: ParsedPage) -> CategoryScore:
+    links_score, links_findings, links_recs = _score_internal_links(page.internal_links)
+
+    findings = []
+    findings.extend(links_findings)
+
+    recommendations = []
+    recommendations.extend(links_recs)
+
+    metrics = {"internal_links": links_score}
+
+    return CategoryScore(
+        score=links_score,
         max_possible=100,
         metrics=metrics,
         findings=findings,
