@@ -344,3 +344,33 @@ def _score_body_content(body_text: str | None) -> tuple[int, list[str], list[str
                 "Avoid keyword stuffing and repetitive phrases",
             ],
         )
+
+
+def _score_content_quality(page: ParsedPage) -> CategoryScore:
+    count_score, count_findings, count_recs = _score_word_count(page.word_count)
+    head_score, head_findings, head_recs = _score_headings(page.headings)
+    content_score, content_findings, content_recs = _score_body_content(page.body_text_content)
+
+    findings = []
+    findings.extend(count_findings)
+    findings.extend(head_findings)
+    findings.extend(content_findings)
+
+    recommendations = []
+    recommendations.extend(count_recs)
+    recommendations.extend(head_recs)
+    recommendations.extend(content_recs)
+
+    metrics = {
+        "word_count": count_score,
+        "headings": head_score,
+        "body_text_content": content_score,
+    }
+
+    return CategoryScore(
+        score=content_score + count_score + head_score,
+        max_possible=100,
+        metrics=metrics,
+        findings=findings,
+        recommendations=recommendations,
+    )
