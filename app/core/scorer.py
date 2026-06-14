@@ -517,15 +517,27 @@ def _score_internal_links(
     count = len(internal_links)
 
     if count == 0:
-        return (0, ["Page has no internal links"], ["Add internal links to connect your content and improve crawlability"])
+        return (
+            0,
+            ["Page has no internal links"],
+            ["Add internal links to connect your content and improve crawlability"],
+        )
     elif 0 < count <= 5:
-        return (30, ["Page has minimal internal linking"], ["Add more internal links to improve site connectivity"])
+        return (
+            30,
+            ["Page has minimal internal linking"],
+            ["Add more internal links to improve site connectivity"],
+        )
     elif 5 < count <= 20:
         score = round((count / 20) * 100)
         return (score, ["Page has good internal link coverage"], [])
     else:
         score = round(100 - (count - 20) * 2, 50)
-        return (score, ["Page has excessive internal links"], ["Keep internal links focused and relevant"])
+        return (
+            score,
+            ["Page has excessive internal links"],
+            ["Keep internal links focused and relevant"],
+        )
 
 
 def _score_connectivity(page: ParsedPage) -> CategoryScore:
@@ -541,6 +553,59 @@ def _score_connectivity(page: ParsedPage) -> CategoryScore:
 
     return CategoryScore(
         score=links_score,
+        max_possible=100,
+        metrics=metrics,
+        findings=findings,
+        recommendations=recommendations,
+    )
+
+
+def _score_images_without_alt(
+    images_without_alt: int,
+) -> tuple[int, list[str], list[str]]:
+    if images_without_alt == 0:
+        return (100, ["All images have alt text"], [])
+    elif 0 < images_without_alt <= 10:
+        score = round(100 - (images_without_alt / 10) * 50)
+        return (
+            score,
+            [f"{images_without_alt} images are missing alt text"],
+            [
+                "Add descriptive alt text to all images for accessibility and AI understanding"
+            ],
+        )
+    elif 10 < images_without_alt <= 20:
+        score = round(50 - ((images_without_alt - 10) / 10) * 50)
+        return (
+            score,
+            [f"{images_without_alt} images are missing alt text"],
+            [
+                "Urgently add alt text — missing alt text severely impacts AI image understanding"
+            ],
+        )
+    else:
+        return (
+            0,
+            [
+                "Critical: majority of images missing alt text",
+                f"{images_without_alt} images are missing alt text",
+            ],
+            ["Audit all images and add descriptive alt text immediately"],
+        )
+
+def _score_technical_compliance(page: ParsedPage) -> CategoryScore:
+    imgs_score, imgs_findings, imgs_recs = _score_images_without_alt(page.images_without_alt)
+
+    findings = []
+    findings.extend(imgs_findings)
+
+    recommendations = []
+    recommendations.extend(imgs_recs)
+
+    metrics = {"images_without_alt": imgs_score}
+
+    return CategoryScore(
+        score=imgs_score,
         max_possible=100,
         metrics=metrics,
         findings=findings,
