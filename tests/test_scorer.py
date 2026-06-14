@@ -920,6 +920,15 @@ def test_score_schema_quality(page, expected):
                 ["Keep internal links focused and relevant"],
             ),
         ),
+        (
+            # Excessive internal links
+            [f"/page-{i}" for i in range(100)],
+            (
+                50,  # round(100 - (25 - 20) * 2)
+                ["Page has excessive internal links"],
+                ["Keep internal links focused and relevant"],
+            ),
+        ),
     ],
 )
 def test_score_internal_links(internal_links, expected):
