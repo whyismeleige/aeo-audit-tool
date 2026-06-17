@@ -1,3 +1,4 @@
+import json
 import asyncio
 from dataclasses import asdict
 from datetime import datetime, timezone
@@ -95,7 +96,7 @@ async def _run_audit_async(job_id: str, url: str):
             job_id,
             "SUCCESS",
             url=url,
-            result=asdict(result),
+            result=json.dumps(asdict(result)),
             completed_at=datetime.now(timezone.utc),
         )
     except Exception as e:
