@@ -75,7 +75,7 @@ async def _disconnect_pool():
 
 
 @celery_app.task()
-def run_audit(job_id: str, url: str):
+def run_audit_task(job_id: str, url: str):
     asyncio.run(_run_audit_async(job_id, url))
 
 
