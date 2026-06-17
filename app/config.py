@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     DB_NAME: str = "aeo_audit"
     DB_USER: str = "postgres"
     DB_PASSWORD: str = ""
+    REDIS_URL: str = "redis://localhost:6379/0"
 
     @computed_field
     @property
