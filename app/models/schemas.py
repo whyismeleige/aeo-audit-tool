@@ -3,8 +3,10 @@ from pydantic import BaseModel, HttpUrl, Field
 
 from app.models.jobs import JobStatus
 
+
 class AuditRequest(BaseModel):
     url: HttpUrl
+
 
 class CategoryScoreResponse(BaseModel):
     score: int
@@ -12,6 +14,7 @@ class CategoryScoreResponse(BaseModel):
     metrics: dict[str, int]
     findings: list[str]
     recommendations: list[str]
+
 
 class PageResponse(BaseModel):
     url: str
@@ -22,10 +25,12 @@ class PageResponse(BaseModel):
     connectivity: CategoryScoreResponse
     technical_compliance: CategoryScoreResponse
 
+
 class UnreachablePageResponse(BaseModel):
     url: str
     status_code: int
     reason: str
+
 
 class AuditResponse(BaseModel):
     url: str
@@ -38,6 +43,7 @@ class AuditResponse(BaseModel):
     crawl_duration_seconds: float
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+
 class JobResponse(BaseModel):
     job_id: str
     url: str
@@ -47,3 +53,8 @@ class JobResponse(BaseModel):
     created_at: datetime
     updated_at: datetime | None
     completed_at: datetime | None
+
+
+class JobCreatedResponse(BaseModel):
+    job_id: str
+    status: str = "pending"
