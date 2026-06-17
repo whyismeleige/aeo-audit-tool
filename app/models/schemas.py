@@ -1,6 +1,8 @@
 from datetime import datetime, timezone
 from pydantic import BaseModel, HttpUrl, Field
 
+from app.models.jobs import JobStatus
+
 class AuditRequest(BaseModel):
     url: HttpUrl
 
@@ -36,3 +38,12 @@ class AuditResponse(BaseModel):
     crawl_duration_seconds: float
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
+class JobResponse(BaseModel):
+    job_id: str
+    url: str
+    status: JobStatus
+    result: AuditResponse | None
+    error_message: str | None
+    created_at: datetime
+    updated_at: datetime | None
+    completed_at: datetime | None
