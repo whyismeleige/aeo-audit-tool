@@ -1,6 +1,7 @@
 import time
 from dataclasses import dataclass
 from collections import Counter
+from collections.abc import Callable, Awaitable
 
 from app.core.crawler import Crawler, CrawlResult
 from app.core.parser import parse, ParsedPage
@@ -19,10 +20,13 @@ class OrchestrationResult:
     findings: list[str]
 
 
-async def orchestrate(seed_url: str) -> OrchestrationResult:
+async def orchestrate(seed_url: str, on_status_change: Callable[[str], Awaitable[None]] | None = None) -> OrchestrationResult:
     crawler = Crawler(seed_url)
 
     crawl_start = time.perf_counter()
+    
+    if on_status_change:
+        await on_status_change("CRAWLING")
 
     crawl_results: list[CrawlResult] = await crawler.crawl()
 
@@ -32,6 +36,9 @@ async def orchestrate(seed_url: str) -> OrchestrationResult:
 
     scored_pages: list[ScoreResult] = []
     unreachable_pages: list[UnreachablePage] = []
+    
+    if on_status_change:
+        await on_status_change("SCORING")
 
     for page in parsed_pages:
         result: ScoreResult | UnreachablePage = score_page(page)
