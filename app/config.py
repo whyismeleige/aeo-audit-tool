@@ -34,6 +34,19 @@ class Settings(BaseSettings):
         )
         return str(dsn)
 
+    @computed_field
+    @property
+    def DATABASE_URL_SYNC(self) -> str:
+        dsn = PostgresDsn.build(
+            scheme="postgresql+psycopg2",
+            host=self.DB_HOST,
+            port=self.DB_PORT,
+            path=self.DB_NAME,
+            username=self.DB_USER,
+            password=self.DB_PASSWORD
+        )
+        return str(dsn)
+
 
 @lru_cache
 def get_settings() -> Settings:
