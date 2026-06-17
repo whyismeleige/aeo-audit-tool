@@ -3,7 +3,6 @@ import asyncpg
 
 from app.logger import get_logger
 from app.config import get_settings
-from app.models.schemas import JobResponse
 
 logger = get_logger(__name__)
 settings = get_settings()
@@ -41,7 +40,7 @@ async def create_job(url: str) -> str:
         )
         return str(job_id)
 
-async def get_job(job_id: str) -> JobResponse:
+async def get_job(job_id: str) -> asyncpg.Record | None:
     global db_pool
 
     if not db_pool:
