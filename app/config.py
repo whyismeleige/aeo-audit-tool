@@ -2,8 +2,6 @@ from pydantic_settings import BaseSettings
 from pydantic import ConfigDict, computed_field, PostgresDsn
 from functools import lru_cache
 
-DB_SCHEME = "postgresql+asyncpg"
-
 class Settings(BaseSettings):
     model_config = ConfigDict(
         env_file=".env",
@@ -26,7 +24,7 @@ class Settings(BaseSettings):
     @property
     def DATABASE_URL(self) -> str:
         dsn = PostgresDsn.build(
-            scheme=DB_SCHEME,
+            scheme="postgresql",
             host=self.DB_HOST,
             port=self.DB_PORT,
             path=self.DB_NAME,
@@ -48,6 +46,18 @@ class Settings(BaseSettings):
         )
         return str(dsn)
 
+    @computed_field
+    @property
+    def DATABASE_URL_ASYNC(self) -> str:
+        dsn = PostgresDsn.build(
+            scheme="postgresql+asyncpg",
+            host=self.DB_HOST,
+            port=self.DB_PORT,
+            path=self.DB_NAME,
+            username=self.DB_USER,
+            password=self.DB_PASSWORD
+        )
+        return str(dsn)
 
 @lru_cache
 def get_settings() -> Settings:
