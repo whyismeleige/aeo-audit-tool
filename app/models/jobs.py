@@ -6,7 +6,6 @@ from sqlalchemy import (
     Column,
     UUID,
     String,
-    CheckConstraint,
     Enum,
     DateTime,
     MetaData,

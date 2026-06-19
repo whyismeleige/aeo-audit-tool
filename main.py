@@ -6,7 +6,6 @@ from app.api.routes import audit
 from app.logger import get_logger
 from app.config import get_settings
 
-
 settings = get_settings()
 logger = get_logger(__name__)
 
