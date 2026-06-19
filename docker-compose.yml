@@ -1,9 +1,69 @@
 services:
   api:
     build: .
+    container_name: fastapi
     ports:
       - "8000:8000"
     env_file:
-      - .env
+      - .env.docker 
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      migrator:
+        condition: service_completed_successfully
     volumes:
       - ./logs:/app/logs
+
+  worker:
+    build: .
+    container_name: celery-worker
+    command: celery -A app.worker.celery_app worker --loglevel=info
+    env_file:
+      - .env.docker
+    depends_on:
+      redis:
+        condition: service_started
+      postgres:
+        condition: service_healthy
+      migrator:
+        condition: service_completed_successfully
+  
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    env_file:
+      .env.docker
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+  
+  migrator:
+    build: .
+    container_name: migrator
+    command: alembic upgrade head
+    env_file:
+      - .env.docker
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  postgres_data:
