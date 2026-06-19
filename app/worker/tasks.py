@@ -13,9 +13,6 @@ from app.worker.celery_app import app as celery_app
 logger = get_logger(__name__)
 settings = get_settings()
 
-db_pool = None
-
-
 async def _update_job_status(pool, job_id: str, status: str, **kwargs):
     if not pool:
         logger.error("DB pool is not initialized")
@@ -45,33 +42,18 @@ async def _update_job_status(pool, job_id: str, status: str, **kwargs):
         await conn.execute(query, *values)
 
 
-async def _get_pool():
-    global db_pool
-    if not db_pool:
-        db_pool = await asyncpg.create_pool(
-            settings.DATABASE_URL, min_size=1, max_size=3
-        )
-        logger.info("DB Pool created.")
-    return db_pool
-
-
-async def _disconnect_pool():
-    global db_pool
-    if db_pool:
-        await db_pool.close()
-        logger.info("DB Pool closed.")
-
-
 @celery_app.task()
 def run_audit_task(job_id: str, url: str):
     asyncio.run(_run_audit_async(job_id, url))
 
 
 async def _run_audit_async(job_id: str, url: str):
-    pool = None
+    pool = await asyncpg.create_pool(
+        settings.DATABASE_URL,
+        min_size=1,
+        max_size=3,
+    )
     try:
-        pool = await _get_pool()
-
         await _update_job_status(pool, job_id, "STARTED")
 
         async def status_callback(status):
@@ -112,3 +94,5 @@ async def _run_audit_async(job_id: str, url: str):
                 )
         except Exception as db_error:
             logger.error(f"Failed to update job status to FAILURE; {db_error}")
+    finally:
+        await pool.close() 
