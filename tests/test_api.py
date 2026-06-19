@@ -2,71 +2,46 @@ from fastapi.testclient import TestClient
 from unittest.mock import AsyncMock, patch
 
 from main import app
-from tests.fixtures import fake_result, fake_empty_result, fake_blocked_result
+from tests.fixtures import fake_job_id, fake_successful_job_response
 
 client = TestClient(app)
 
+@patch("app.api.routes.audit.create_job", new_callable=AsyncMock)
+@patch("app.api.routes.audit.run_audit_task")
+def test_successful_job_creation(mock_run_audit_task, mock_create_job):
+    mock_create_job.return_value = fake_job_id
 
-def test_successful_audit():
-    with patch(
-        "app.api.routes.audit.orchestrate", AsyncMock(return_value=fake_result)
-    ) as mock_orchestrate:
-        response = client.post("/api/v1/audit", json={"url": "https://example.com"})
+    response = client.post("/api/v1/audit", json={"url": "https://example.com"})
 
-        assert response.status_code == 200
+    assert response.status_code == 200
 
-        data = response.json()
+    data = response.json()
 
-        assert data["url"] == "https://example.com"
-        assert data["overall_score"] == 80
-        assert len(data["pages"]) == 1
+    assert data["job_id"] == fake_job_id
+    
+    mock_create_job.assert_awaited_once()
+    mock_run_audit_task.delay.assert_called_once()
 
-        mock_orchestrate.assert_awaited_once()
 
 
 def test_malformed_seed_url():
     response = client.post("/api/v1/audit", json={"url": "abcd"})
     assert response.status_code == 422
 
+@patch("app.api.routes.audit.create_job", new_callable=AsyncMock)
+@patch("app.api.routes.audit.run_audit_task")
+def test_run_audit_server_error(_, mock_create_job):
+    mock_create_job.side_effect = Exception("DB Error")
 
-def test_empty_audit():
-    with patch(
-        "app.api.routes.audit.orchestrate", AsyncMock(return_value=fake_empty_result)
-    ) as mock_orchestrate:
-        response = client.post("/api/v1/audit", json={"url": "https://example.com"})
+    response = client.post("/api/v1/audit", json={"url": "https://example.com"})
 
-        assert response.status_code == 503
-        assert (
-            response.json()["detail"]
-            == "The target website could not be reached. Please verify the URL and try again."
-        )
+    assert response.status_code == 500
+    assert (
+        response.json()["detail"]
+        == "An unexpected error occured during the audit. Please try again."
+    )
 
-
-def test_server_errors():
-    with patch(
-        "app.api.routes.audit.orchestrate",
-        AsyncMock(side_effect=Exception("DNS failure")),
-    ):
-        response = client.post("/api/v1/audit", json={"url": "https://example.com"})
-
-        assert response.status_code == 500
-        assert (
-            response.json()["detail"]
-            == "An unexpected error occured during the audit. Please try again."
-        )
-
-
-def test_blocked_audit():
-    with patch(
-        "app.api.routes.audit.orchestrate", AsyncMock(return_value=fake_blocked_result)
-    ) as mock_orchestrate:
-        response = client.post("/api/v1/audit", json={"url": "https://example.com"})
-
-        assert response.status_code == 403
-        assert (
-            response.json()["detail"]
-            == "All pages on the domain were blocked from crawling. Check robots.txt restrictions."
-        )
+    mock_create_job.assert_awaited_once()
 
 def test_health_endpoint():
     response = client.get("/health")
@@ -76,3 +51,45 @@ def test_health_endpoint():
     data = response.json()
 
     assert data["status"] == "ok"
+
+@patch("app.api.routes.audit.get_job", new_callable=AsyncMock)
+def test_job_found(mock_get_job):
+    mock_get_job.return_value = fake_successful_job_response
+
+    response = client.get(f"/api/v1/audit/{fake_job_id}")
+    
+    assert response.status_code == 200
+    
+    data = response.json()
+
+    assert data["status"] == "success"
+    assert data["job_id"] == fake_job_id
+
+    mock_get_job.assert_awaited_once()
+
+@patch("app.api.routes.audit.get_job", new_callable=AsyncMock)
+def test_job_not_found(mock_get_job):
+    mock_get_job.return_value = None
+
+    response = client.get(f"/api/v1/audit/{fake_job_id}")
+
+    assert response.status_code == 404
+    assert response.json()["detail"] == "Audit job was not found."
+
+    mock_get_job.assert_awaited_once()
+
+
+@patch("app.api.routes.audit.get_job", new_callable=AsyncMock)
+def test_get_audit_server_error(mock_get_job):
+    mock_get_job.side_effect = Exception("DB Error")
+
+    response = client.get(f"/api/v1/audit/{fake_job_id}")
+
+    assert response.status_code == 500
+    assert (
+        response.json()["detail"]
+        == "An unexpected error occured during the audit. Please try again."
+    )
+
+    mock_get_job.assert_awaited_once()
+
