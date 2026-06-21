@@ -12,6 +12,8 @@ from app.core.utils import normalize_url
 settings = get_settings()
 logger = get_logger(__name__)
 
+
+HEADINGS = ["h1", "h2", "h3", "h4", "h5", "h6"]
 EXCLUDE_TAGS = ["script", "style", "nav", "footer", "header", "link", "noscript", "g", "menu", "button", "svg", "canvas"]
 EXCLUDE_CLASSES = ["ad", "ads", "advertisements", "banner", "promo", "sponsored"]
 
@@ -20,6 +22,10 @@ class FAQItem:
     question: str
     answer: str
 
+@dataclass
+class Section:
+    heading: str
+    content: str
 
 @dataclass
 class ParsedPage:
@@ -38,6 +44,7 @@ class ParsedPage:
     json_ld_schema: list[str] = field(default_factory=list)
     schema_types: list[str] = field(default_factory=list)
     faq_items: list[FAQItem] = field(default_factory=list)
+    sections: list[Section] = field(default_factory=list) 
 
 def _extract_title(soup: BeautifulSoup) -> str | None:
     return soup.title.string if soup.title else None
@@ -55,7 +62,7 @@ def _extract_canonical_url(soup: BeautifulSoup) -> str | None:
     return link.get("href") if link else None
 
 def _extract_headers(soup: BeautifulSoup) -> list[dict[str, str]]:
-    headings = soup.find_all(["h1", "h2", "h3", "h4", "h5", "h6"])
+    headings = soup.find_all(HEADINGS)
     
     return [{heading.name: heading.text.strip()} for heading in headings] 
 
@@ -190,6 +197,20 @@ def _extract_faq_items(node: Any) -> list[FAQItem]:
     
     return faq_items
 
+def _extract_sections(soup: BeautifulSoup) -> list[Section]:
+    sections: list[Section] = []
+    for el in soup.find_all(HEADINGS):
+        content_parts = []
+        for sibling in el.next_siblings:
+            if getattr(sibling, "name", None) in HEADINGS:
+                break
+        
+            text = sibling.get_text(" ", strip=True) if hasattr(sibling, "get_text") else str(sibling).strip()
+            if text:
+                content_parts.append(text)
+
+        sections.append(Section(heading=el.get_text(separator=" ", strip=True), content=" ".join(content_parts)))
+    return sections
 
 def parse(result: CrawlResult) -> ParsedPage:
     soup = BeautifulSoup(result.html, "lxml")
@@ -213,5 +234,6 @@ def parse(result: CrawlResult) -> ParsedPage:
         internal_links= _extract_internal_links(soup, result.url),
         json_ld_schema= json_ld_schema,
         schema_types= schema_types,
-        faq_items= _extract_faq_items(json_data) 
+        faq_items= _extract_faq_items(json_data),
+        sections= _extract_sections(soup)
     )
