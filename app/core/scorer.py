@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Counter
 
 from app.core.parser import ParsedPage, FAQItem
 
@@ -95,6 +96,14 @@ class UnreachablePage:
     url: str
     status_code: int
     reason: str
+
+
+@dataclass
+class ScoreSite:
+    overall_score: int
+    score_results: list[ScoreResult]
+    top_findings: list[str]
+    top_recommendations: list[str]
 
 
 def _score_title(title: str | None) -> tuple[int, list[str], list[str]]:
@@ -700,3 +709,37 @@ def score_page(page: ParsedPage) -> ScoreResult | UnreachablePage:
         technical_compliance=technical_compliance,
     )
 
+
+def score_site(scored_pages: list[ScoreResult]):
+    site_score = (
+        round(sum(page.overall_score for page in scored_pages) / len(scored_pages))
+        if scored_pages
+        else 0
+    )
+
+    all_findings = []
+    all_recommendations = []
+
+    for page in scored_pages:
+        for category in [
+            page.structured_data,
+            page.connectivity,
+            page.content_quality,
+            page.technical_compliance,
+            page.metadata,
+        ]:
+            all_findings.extend(category.findings)
+            all_recommendations.extend(category.recommendations)
+
+    top_findings = [finding for finding, _ in Counter(all_findings).most_common(5)]
+    top_recommendations = [
+        recommendation
+        for recommendation, _ in Counter(all_recommendations).most_common(5)
+    ]
+
+    return ScoreSite(
+        overall_score=site_score,
+        score_results=scored_pages,
+        top_findings=top_findings,
+        top_recommendations=top_recommendations,
+    )
