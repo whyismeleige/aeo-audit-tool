@@ -1,23 +1,29 @@
 import time
 from dataclasses import dataclass
-from collections import Counter
 from collections.abc import Callable, Awaitable
 
+from app.core.chunker import chunk
 from app.core.crawler import Crawler, CrawlResult
+from app.core.embedder import embed
 from app.core.parser import parse, ParsedPage
-from app.core.scorer import score_page, ScoreResult, UnreachablePage
+from app.core.scorer import score_page, ScoreResult, UnreachablePage, score_site
+from app.core.semantic_scorer import PageSemanticScore, score_chunks, score_semantic
 
 
 @dataclass
 class OrchestrationResult:
     url: str
     overall_score: int
+    semantic_score: int
     pages: list[ScoreResult]
     unreachable_pages: list[UnreachablePage]
+    semantic_pages: list[PageSemanticScore]
     pages_crawled: int
     crawl_duration_seconds: float
     recommendations: list[str]
     findings: list[str]
+    semantic_findings: list[str]
+    semantic_recommendations: list[str]
 
 
 async def orchestrate(seed_url: str, on_status_change: Callable[[str], Awaitable[None]] | None = None) -> OrchestrationResult:
@@ -47,39 +53,31 @@ async def orchestrate(seed_url: str, on_status_change: Callable[[str], Awaitable
         else:
             unreachable_pages.append(result)
 
-    site_score = (
-        round(sum(page.overall_score for page in scored_pages) / len(scored_pages))
-        if scored_pages
-        else 0
-    )
+    site_score_result = score_site(scored_pages)
+    
+    semantic_page_scores = []
 
-    all_findings = []
-    all_recommendations = []
-
-    for page in scored_pages:
-        for category in [
-            page.structured_data,
-            page.connectivity,
-            page.content_quality,
-            page.technical_compliance,
-            page.metadata,
-        ]:
-            all_findings.extend(category.findings)
-            all_recommendations.extend(category.recommendations)
-
-    top_findings = [finding for finding, _ in Counter(all_findings).most_common(5)]
-    top_recommendations = [
-        recommendation
-        for recommendation, _ in Counter(all_recommendations).most_common(5)
-    ]
+    for page in parsed_pages:
+        page_chunks = chunk(page)
+        if not page_chunks:
+            continue
+        page_embeddings = embed(page_chunks)
+        page_semantic_score = score_chunks(page.url, page_embeddings)
+        semantic_page_scores.append(page_semantic_score)
+    
+    semantic_site_result = score_semantic(semantic_page_scores)
 
     return OrchestrationResult(
         url=seed_url,
-        overall_score=site_score,
+        overall_score=site_score_result.overall_score,
+        semantic_score=semantic_site_result.overall_score,
         crawl_duration_seconds=crawl_duration_seconds,
         pages=scored_pages,
+        semantic_pages=semantic_site_result.page_scores,
         pages_crawled=len(crawl_results),
         unreachable_pages=unreachable_pages,
-        findings=top_findings,
-        recommendations=top_recommendations,
+        findings=site_score_result.top_findings,
+        recommendations=site_score_result.top_recommendations,
+        semantic_findings=semantic_site_result.top_findings,
+        semantic_recommendations=semantic_site_result.top_recommendations
     )
