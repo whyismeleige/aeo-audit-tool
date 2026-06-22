@@ -1,7 +1,7 @@
 import pytest
 from bs4 import BeautifulSoup
 
-from app.core.parser import _extract_title, _extract_meta_description, _extract_meta_robots, _extract_canonical_url, _extract_headers, _extract_body_text, _extract_word_count, _extract_internal_links, _extract_images_without_alt, parse
+from app.core.parser import _extract_title, _extract_sections, _extract_meta_description, _extract_meta_robots, _extract_canonical_url, _extract_headers, _extract_body_text, _extract_word_count, _extract_internal_links, _extract_images_without_alt, parse
 from app.core.crawler import CrawlResult
 
 def make_soup(html: str) -> BeautifulSoup:
@@ -369,7 +369,124 @@ def test_images_without_alt(html, expected):
     soup = make_soup(html)
     result = _extract_images_without_alt(soup)
     assert result == expected
-    
+
+@pytest.mark.parametrize("html, expected", [
+    # Simple case: one heading with paragraphs
+    (
+        """
+        <html>
+            <body>
+                <h1>Title</h1>
+                <p>Paragraph 1</p>
+                <p>Paragraph 2</p>
+            </body>
+        </html>
+        """,
+        [
+            {"heading": "Title", "content": "Paragraph 1 Paragraph 2"}
+        ],
+    ),
+
+    # Multiple headings, each section should stop at next heading
+    (
+        """
+        <html>
+            <body>
+                <h1>Section 1</h1>
+                <p>Content 1</p>
+
+                <h2>Section 2</h2>
+                <p>Content 2</p>
+                <p>More Content 2</p>
+            </body>
+        </html>
+        """,
+        [
+            {"heading": "Section 1", "content": "Content 1"},
+            {"heading": "Section 2", "content": "Content 2 More Content 2"},
+        ],
+    ),
+
+    # Nested elements inside siblings (div/span)
+    (
+        """
+        <html>
+            <body>
+                <h1>Main</h1>
+                <div>
+                    <p>Inside div</p>
+                    <span>Span text</span>
+                </div>
+            </body>
+        </html>
+        """,
+        [
+            {"heading": "Main", "content": "Inside div Span text"}
+        ],
+    ),
+
+    # Should stop when next heading appears even if nested structure exists
+    (
+        """
+        <html>
+            <body>
+                <h1>First</h1>
+                <p>A</p>
+                <div>Still A</div>
+
+                <h2>Second</h2>
+                <p>B</p>
+            </body>
+        </html>
+        """,
+        [
+            {"heading": "First", "content": "A Still A"},
+            {"heading": "Second", "content": "B"},
+        ],
+    ),
+
+    # Empty content between headings
+    (
+        """
+        <html>
+            <body>
+                <h1>Only Heading</h1>
+            </body>
+        </html>
+        """,
+        [
+            {"heading": "Only Heading", "content": ""}
+        ],
+    ),
+
+    # Multiple headings at same level
+    (
+        """
+        <html>
+            <body>
+                <h1>A</h1>
+                <p>1</p>
+                <h1>B</h1>
+                <p>2</p>
+            </body>
+        </html>
+        """,
+        [
+            {"heading": "A", "content": "1"},
+            {"heading": "B", "content": "2"},
+        ],
+    ),
+])
+def test_extract_sections(html, expected):
+    soup = make_soup(html)
+    result = _extract_sections(soup)
+
+    assert len(result) == len(expected)
+
+    for r, e in zip(result, expected):
+        assert r.heading == e["heading"]
+        assert r.content == e["content"]
+
 html_content = """
     <html>
         <head>
