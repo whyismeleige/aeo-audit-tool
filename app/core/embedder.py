@@ -4,10 +4,12 @@ import numpy
 from sentence_transformers import SentenceTransformer
 
 from app.core.chunker import TextChunk
+from app.config import get_settings
 
 PASSAGE_PREFIX = ""
 QUERY_PREFIX = "Represent this sentence for searching relevant passages: "
 
+settings = get_settings()
 
 @dataclass
 class ChunkEmbedding:
@@ -22,7 +24,7 @@ def _get_model():
     global _model
 
     if _model is None:
-        _model = SentenceTransformer("BAAI/bge-base-en-v1.5")
+        _model = SentenceTransformer(settings.EMBEDDING_MODEL)
 
     return _model
 

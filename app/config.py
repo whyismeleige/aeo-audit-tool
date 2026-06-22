@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     DB_USER: str = "postgres"
     DB_PASSWORD: str = ""
     REDIS_URL: str = "redis://localhost:6379/0"
+    EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
 
     @computed_field
     @property
