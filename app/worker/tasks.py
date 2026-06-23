@@ -4,6 +4,7 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 
 import asyncpg
+from celery.signals import worker_ready
 
 from app.config import get_settings
 from app.logger import get_logger
@@ -13,6 +14,12 @@ from app.worker.celery_app import app as celery_app
 
 logger = get_logger(__name__)
 settings = get_settings()
+
+@worker_ready.connect
+def preload_model(sender, **kwargs):
+    from app.core.embedder import _get_model
+    _get_model()
+    logger.info("Embedding model preloaded and ready")
 
 async def _update_job_status(pool, job_id: str, status: str, **kwargs):
     if not pool:
