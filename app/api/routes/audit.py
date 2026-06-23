@@ -1,5 +1,6 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
+from app.api.dependecies import rate_limit_check
 from app.database import create_job, get_job
 from app.worker.tasks import run_audit_task
 from app.core.reporter import generate_report
@@ -16,7 +17,7 @@ router = APIRouter()
 
 
 @router.post("/audit", response_model=JobCreatedResponse)
-async def run_audit(request: AuditRequest) -> JobCreatedResponse:
+async def run_audit(request: AuditRequest, _=Depends(rate_limit_check)) -> JobCreatedResponse:
     logger.info(f"Audit requested for URL: {request.url}")
 
     try:
