@@ -1,6 +1,6 @@
 services:
   api:
-    build: .
+    image: piyushjain31/aeo-audit-tool:latest
     container_name: fastapi
     ports:
       - "8000:8000"
@@ -13,9 +13,9 @@ services:
       - ./logs:/app/logs
 
   worker:
-    build: .
+    image: piyushjain31/aeo-audit-tool:latest
     container_name: celery-worker
-    command: celery -A app.worker.celery_app worker --loglevel=info --concurrency=${WORKER_CONCURRENCY_LIMIT}
+    command: celery -A app.worker.celery_app worker --loglevel=info --concurrency=${WORKER_CONCURRENCY_LIMIT:-1}
     env_file:
       - .env.production
     depends_on:
@@ -27,5 +27,3 @@ services:
     container_name: redis
     ports:
       - "6379:6379"
-
-  
