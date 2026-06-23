@@ -4,7 +4,7 @@ from dataclasses import asdict
 from datetime import datetime, timezone
 
 import asyncpg
-from celery.signals import worker_ready
+from celery.signals import worker_process_init
 
 from app.config import get_settings
 from app.logger import get_logger
@@ -15,7 +15,7 @@ from app.worker.celery_app import app as celery_app
 logger = get_logger(__name__)
 settings = get_settings()
 
-@worker_ready.connect
+@worker_process_init.connect
 def preload_model(sender, **kwargs):
     from app.core.embedder import _get_model
     _get_model()
