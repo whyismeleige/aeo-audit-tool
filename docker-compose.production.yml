@@ -1,0 +1,31 @@
+services:
+  api:
+    build: .
+    container_name: fastapi
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env.production
+    depends_on:
+      redis:
+        condition: service_started
+    volumes:
+      - ./logs:/app/logs
+
+  worker:
+    build: .
+    container_name: celery-worker
+    command: celery -A app.worker.celery_app worker --loglevel=info --concurrency=${WORKER_CONCURRENCY_LIMIT}
+    env_file:
+      - .env.production
+    depends_on:
+      redis:
+        condition: service_started
+
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    ports:
+      - "6379:6379"
+
+  
