@@ -1,11 +1,12 @@
 from datetime import datetime, timezone
-from pydantic import BaseModel, HttpUrl, Field
+from pydantic import BaseModel, EmailStr, HttpUrl, Field
 
 from app.models.jobs import JobStatus
 
 
 class AuditRequest(BaseModel):
     url: HttpUrl
+    email: EmailStr
 
 
 class CategoryScoreResponse(BaseModel):
