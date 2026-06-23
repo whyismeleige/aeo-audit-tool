@@ -9,8 +9,6 @@ class Settings(BaseSettings):
         extra="ignore"
     )
     
-    RESEND_API_KEY: str
-    RESEND_FROM_EMAIL: str
     APP_ENV: str = "development"
     LOG_LEVEL: str = "INFO"
     CRAWL_LIMIT: int = 20
@@ -23,7 +21,9 @@ class Settings(BaseSettings):
     DB_PASSWORD: str = ""
     REDIS_URL: str = "redis://localhost:6379/0"
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
-
+    RESEND_API_KEY: str = ""
+    RESEND_FROM_EMAIL: str = ""
+    
     @computed_field
     @property
     def DATABASE_URL(self) -> str:
