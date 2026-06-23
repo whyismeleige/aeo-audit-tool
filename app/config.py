@@ -8,7 +8,8 @@ class Settings(BaseSettings):
         env_file_encoding="utf-8",
         extra="ignore"
     )
-
+    
+    RESEND_API_KEY: str
     APP_ENV: str = "development"
     LOG_LEVEL: str = "INFO"
     CRAWL_LIMIT: int = 20
