@@ -27,7 +27,7 @@ async def rate_limit_check(request: Request):
     )
 
     ip_set = await redis_client.set(
-        key=f"rate-limit:{ip}", value="1", nx=True, ex=TTL_SECONDS
+        name=f"rate-limit:{ip}", value="1", nx=True, ex=TTL_SECONDS
     )
 
     if not ip_set:
