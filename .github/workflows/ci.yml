@@ -62,7 +62,7 @@ jobs:
             docker compose -f docker-compose.production.yml run --rm api alembic upgrade head
             docker compose -f docker-compose.production.yml up -d
             for i in $(seq 1 10); do
-              curl -sf http://localhost:8000/health && exit 0
+              curl -sf https://api.marrai.tech/health && exit 0
               echo "Waiting for API... attempt $i/10"
               sleep 10
             done
