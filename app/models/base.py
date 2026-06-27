@@ -25,3 +25,4 @@ from app.models import brand_mentions
 from app.models import competitor_mentions
 from app.models import rankings
 from app.models import metric_snapshots
+from app.models import citation_gaps
