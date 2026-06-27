@@ -7,3 +7,4 @@ metadata = MetaData()
 from app.models import jobs
 from app.models import users
 from app.models import organizations
+from app.models import organization_memberships
