@@ -13,3 +13,5 @@ from app.models import project_domains
 from app.models import competitors
 from app.models import competitor_domains
 from app.models import prompt_sets
+from app.models import prompts
+from app.models import prompt_set_prompts
