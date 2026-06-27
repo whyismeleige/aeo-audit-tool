@@ -15,3 +15,6 @@ from app.models import competitor_domains
 from app.models import prompt_sets
 from app.models import prompts
 from app.models import prompt_set_prompts
+from app.models import ai_platforms
+from app.models import run_batches
+from app.models import prompt_runs
