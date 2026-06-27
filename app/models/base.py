@@ -24,3 +24,4 @@ from app.models import citations
 from app.models import brand_mentions
 from app.models import competitor_mentions
 from app.models import rankings
+from app.models import metric_snapshots
