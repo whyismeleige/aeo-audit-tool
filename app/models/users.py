@@ -26,8 +26,8 @@ users_table = Table(
     "users",
     metadata,
     Column("id", UUID(as_uuid=True), primary_key=True, default=uuid.uuid4),
-    Column("clerk_user_id", String(255), nullable=False, unique=True),
-    Column("email", VARCHAR(255), nullable=False, unique=True),
+    Column("clerk_user_id", String(255), nullable=False),
+    Column("email", VARCHAR(255), nullable=False),
     Column("full_name", String(255), nullable=True),
     Column("avatar_url", String(2048), nullable=True),
     Column(
@@ -38,6 +38,7 @@ users_table = Table(
             create_type=False,
             values_callable=lambda enum_cls: [member.value for member in enum_cls],
         ),
+        nullable=False,
         default=UserStatus.ACTIVE,
         server_default=UserStatus.ACTIVE.value,
     ),
