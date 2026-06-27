@@ -18,3 +18,4 @@ from app.models import prompt_set_prompts
 from app.models import ai_platforms
 from app.models import run_batches
 from app.models import prompt_runs
+from app.models import ai_observations
