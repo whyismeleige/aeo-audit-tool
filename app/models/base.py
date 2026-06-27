@@ -23,3 +23,4 @@ from app.models import extraction_results
 from app.models import citations
 from app.models import brand_mentions
 from app.models import competitor_mentions
+from app.models import rankings
