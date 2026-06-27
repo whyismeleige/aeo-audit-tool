@@ -15,6 +15,7 @@ from sqlalchemy.sql import func
 
 from app.models.base import metadata
 
+
 class UserStatus(enum.Enum):
     ACTIVE = "active"
     DISABLED = "disabled"
@@ -34,13 +35,16 @@ users_table = Table(
         Enum(
             UserStatus,
             name="user_status",
+            create_type=False,
             values_callable=lambda enum_cls: [member.value for member in enum_cls],
         ),
         default=UserStatus.ACTIVE,
         server_default=UserStatus.ACTIVE.value,
     ),
     Column("last_seen_at", DateTime(timezone=True), nullable=True),
-    Column("created_at", DateTime(timezone=True), server_default=func.now(), nullable=False),
+    Column(
+        "created_at", DateTime(timezone=True), server_default=func.now(), nullable=False
+    ),
     Column(
         "updated_at",
         DateTime(timezone=True),
