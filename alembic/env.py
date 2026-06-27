@@ -5,7 +5,7 @@ from sqlalchemy import pool
 
 from alembic import context
 from app.config import get_settings
-from app.models.jobs import metadata
+from app.models.base import metadata
 
 settings = get_settings()
 

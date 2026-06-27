@@ -9,13 +9,11 @@ from sqlalchemy import (
     String,
     Enum,
     DateTime,
-    MetaData,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 
-metadata = MetaData()
-
+from app.models.base import metadata
 
 class JobStatus(enum.Enum):
     PENDING = "pending"
