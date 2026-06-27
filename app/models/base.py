@@ -9,3 +9,4 @@ from app.models import users
 from app.models import organizations
 from app.models import organization_memberships
 from app.models import brand_projects
+from app.models import project_domains
